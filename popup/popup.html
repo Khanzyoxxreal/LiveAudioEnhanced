@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Audio Enhanced</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<main class="app">
+  <div class="layout">
+
+    <!-- LEFT: what is playing + control -->
+    <aside class="left">
+      <div class="brandbar">
+        <svg class="logo" viewBox="0 0 24 20" aria-hidden="true">
+          <rect x="1" y="8" width="3" height="6" rx="1.5"/><rect x="6" y="3" width="3" height="14" rx="1.5"/>
+          <rect x="11" y="0" width="3" height="20" rx="1.5"/><rect x="16" y="5" width="3" height="10" rx="1.5"/>
+          <rect x="21" y="8" width="2.4" height="5" rx="1.2"/>
+        </svg>
+        <span class="brand-name">Live Audio Enhanced</span>
+        <span id="version" class="version">v1.0.0</span>
+      </div>
+
+      <div id="statusCard" class="now s-off">
+        <div class="thumb">
+          <img id="thumbImg" alt="" referrerpolicy="no-referrer" hidden>
+          <div id="thumbFallback" class="thumb-fallback"><img id="favImg" alt="" hidden><span id="favLetter"></span></div>
+          <span class="chip"><i id="siteDot" class="dot"></i><b id="statusTitle">Ready</b></span>
+        </div>
+        <div class="meta">
+          <div id="thumbTitle" class="t-title">-</div>
+          <div class="t-sub"><span id="siteName">-</span></div>
+        </div>
+      </div>
+
+      <div id="errorBox" class="error" role="alert" hidden></div>
+
+      <button id="power" class="power" type="button" aria-label="Start Live Audio Enhanced">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+        <span id="powerLabel">Start</span>
+      </button>
+      <button id="switchTab" class="link-btn" type="button" hidden>Capture this tab instead</button>
+
+      <div class="viz">
+        <canvas id="spectrum" class="spectrum" height="52" aria-label="Frequency spectrum"></canvas>
+        <div class="levels">
+          <span class="lv-label">IN</span>
+          <div class="meter"><div class="fill" id="inFill"></div><div class="hold" id="inHold"></div></div>
+          <span class="db" id="inDb">-inf</span>
+          <span class="lv-label">OUT</span>
+          <div class="meter"><div class="fill" id="outFill"></div><div class="hold" id="outHold"></div></div>
+          <span class="db" id="outDb">-inf</span>
+        </div>
+        <div class="viz-foot">
+          <span class="legend"><i class="lg lg-in"></i>Original <i class="lg lg-out"></i>Enhanced</span>
+          <span id="clip" class="clip" title="Output reached full scale">CLIP</span>
+        </div>
+      </div>
+      <div id="monoNote" class="note" hidden>Mono source: stereo focus and width are bypassed</div>
+    </aside>
+
+    <!-- RIGHT: sound controls -->
+    <section class="right">
+      <div class="topline">
+        <div class="preset-box">
+          <span class="lbl">Preset</span>
+          <div class="select-wrap">
+            <select id="presetSelect" aria-label="Preset"></select>
+            <svg viewBox="0 0 24 24" class="ico sm chev"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="enh-box">
+          <span class="lbl">Enhancement</span>
+          <label class="switch"><input type="checkbox" id="enabled" aria-label="Audio enhancement"><span></span></label>
+        </div>
+        <button id="closeBtn" class="ghost" type="button" title="Close" aria-label="Close">
+          <svg viewBox="0 0 24 24" class="ico"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div id="presetHint" class="hint"></div>
+
+      <nav class="tabs" role="tablist">
+        <button class="tab on" type="button" role="tab" data-tab="mix" aria-selected="true">Mix</button>
+        <button class="tab" type="button" role="tab" data-tab="eq" aria-selected="false">Equalizer</button>
+        <button class="tab" type="button" role="tab" data-tab="adv" aria-selected="false">Advanced</button>
+      </nav>
+
+      <div class="panels">
+        <!-- MIX -->
+        <div id="tab-mix" class="panel grid2" role="tabpanel">
+          <div class="cell" title="Strength of the whole processing chain, not the amount of music recovered">
+            <div class="c-head"><label class="sl" for="enhancement">Music enhancement</label><span class="val" id="enhancement-val"></span></div>
+            <input type="range" id="enhancement" min="0" max="100" step="1">
+          </div>
+          <div class="cell" title="Lowers centred mid-range sound and brings wide stereo sound forward">
+            <div class="c-head"><label class="sl" for="stereoFocus">Stereo focus</label><span class="val" id="stereoFocus-val"></span></div>
+            <input type="range" id="stereoFocus" min="0" max="100" step="1">
+          </div>
+          <div class="cell" title="Cuts the centred 200 Hz-4 kHz range harder. Also dims centred instruments">
+            <div class="c-head"><label class="sl" for="vocalCut">Vocal reduction</label><span class="val" id="vocalCut-val"></span></div>
+            <input type="range" id="vocalCut" min="0" max="100" step="1">
+          </div>
+          <div class="cell" title="Turns down cheering, applause tails and room echo between the notes">
+            <div class="c-head"><label class="sl" for="crowdCut">Crowd &amp; hall reduction</label><span class="val" id="crowdCut-val"></span></div>
+            <input type="range" id="crowdCut" min="0" max="100" step="1">
+          </div>
+          <div class="cell" title="Adds low-end weight and punch to kick drums and bass">
+            <div class="c-head"><label class="sl" for="bassBoost">Bass boost</label><span class="val" id="bassBoost-val"></span></div>
+            <input type="range" id="bassBoost" min="0" max="100" step="1">
+          </div>
+          <div class="cell" title="Widens the stereo image. No effect on mono sources">
+            <div class="c-head"><label class="sl" for="stereoWidth">Stereo width</label><span class="val" id="stereoWidth-val"></span></div>
+            <input type="range" id="stereoWidth" min="0" max="100" step="1">
+          </div>
+          <div class="cell" title="Softens the 4-10 kHz region with a gentle filter">
+            <div class="c-head"><label class="sl" for="harshness">Harshness reduction</label><span class="val" id="harshness-val"></span></div>
+            <input type="range" id="harshness" min="0" max="100" step="1">
+          </div>
+          <div class="cell vol">
+            <div class="c-head"><label class="sl" for="volume">Master volume</label>
+              <button id="mute" class="mute" type="button" aria-pressed="false" title="Mute" aria-label="Mute">
+                <svg viewBox="0 0 24 24" class="ico sm"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path class="waves" d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path class="waves" d="M19.07 4.93a10 10 0 0 1 0 14.14"/><line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
+              </button>
+              <span class="val" id="volume-val"></span></div>
+            <input type="range" id="volume" min="0" max="150" step="1">
+          </div>
+        </div>
+
+        <!-- EQ -->
+        <div id="tab-eq" class="panel" role="tabpanel" hidden>
+          <div id="eqFold" class="eqbox">
+            <div class="eqhead"><span class="lbl">7-band equalizer</span>
+              <label class="switch"><input type="checkbox" id="eqEnabled" aria-label="Equalizer on"><span></span></label></div>
+            <div id="eqBands" class="eq-body"></div>
+          </div>
+        </div>
+
+        <!-- ADVANCED -->
+        <div id="tab-adv" class="panel adv" role="tabpanel" hidden>
+          <div id="compFold" class="box">
+            <div class="eqhead"><span class="lbl">Dynamic compressor</span>
+              <label class="switch"><input type="checkbox" id="compEnabled" aria-label="Compressor on"><span></span></label></div>
+            <div class="grid2 tight">
+              <div class="cell"><div class="c-head"><label class="sl" for="threshold">Threshold</label><span class="val" id="threshold-val"></span></div><input type="range" id="threshold" min="-60" max="0" step="1"></div>
+              <div class="cell"><div class="c-head"><label class="sl" for="ratio">Ratio</label><span class="val" id="ratio-val"></span></div><input type="range" id="ratio" min="1" max="12" step="0.5"></div>
+              <div class="cell"><div class="c-head"><label class="sl" for="attack">Attack</label><span class="val" id="attack-val"></span></div><input type="range" id="attack" min="1" max="100" step="1"></div>
+              <div class="cell"><div class="c-head"><label class="sl" for="release">Release</label><span class="val" id="release-val"></span></div><input type="range" id="release" min="50" max="1000" step="10"></div>
+              <div class="cell"><div class="c-head"><label class="sl" for="makeup">Makeup gain</label><span class="val" id="makeup-val"></span></div><input type="range" id="makeup" min="0" max="12" step="0.5"></div>
+            </div>
+          </div>
+          <div id="myPresets" class="box">
+            <span class="lbl">My presets</span>
+            <div class="save-line">
+              <input id="presetName" class="field" type="text" maxlength="32" placeholder="Name for a new preset" aria-label="New preset name">
+              <button id="presetSave" class="btn" type="button">Save</button>
+              <button id="presetUpdate" class="btn" type="button">Update</button>
+              <button id="presetDelete" class="btn danger" type="button">Delete</button>
+            </div>
+            <div id="presetMsg" class="hint" role="status"></div>
+            <details class="share">
+              <summary>Share presets</summary>
+              <textarea id="shareBox" class="field" rows="3" spellcheck="false" placeholder="Export fills this box. To import, paste preset text here."></textarea>
+              <div class="btn-line">
+                <button id="presetExport" class="btn" type="button">Export</button>
+                <button id="presetImport" class="btn" type="button">Import</button>
+              </div>
+            </details>
+          </div>
+          <button id="reset" class="link-btn" type="button">Reset all to defaults</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+<script type="module" src="popup.js"></script>
+</body>
+</html>
