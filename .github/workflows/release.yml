@@ -1,0 +1,22 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build zip
+        run: |
+          zip -r "LiveAudioEnhanced-${GITHUB_REF_NAME}.zip" \
+            manifest.json background offscreen popup audio shared assets README.md LICENSE
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: LiveAudioEnhanced-*.zip
